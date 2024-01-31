@@ -1,0 +1,42 @@
+---
+- name: NFS mount
+  hosts: all
+  become: true
+  vars:
+    mynfs: "ip-addr:/nfs/share"
+    mountpoint: "/share"
+    permission: '0777'
+    myopts: 'rw,sync'
+
+  tasks:
+    - name: Utility present redhat-like
+      ansible.builtin.dnf:
+        name:
+          - nfs-utils
+          - nfs4-acl-tools
+        state: present
+      when: ansible_os_family == 'RedHat'
+
+    - name: Setup NFS for Debian/Ubuntu 
+      ansible.builtin.apt:
+        name:
+          - nfs-common
+          - nfs4-acl-tools
+        state: present
+      when: ansible_os_family == 'Debian'
+
+    - name: Check mountpoint exist
+      ansible.builtin.file:
+        path: "{{ mountpoint }}"
+        state: directory
+        mode: "{{ permission }}"
+        owner: root
+        group: root
+
+    - name: Mount the NFS share
+      ansible.posix.mount:
+        src: "{{ mynfs }}"
+        path: "{{ mountpoint }}"
+        fstype: nfs
+        opts: "{{ myopts }}"
+        state: mounted
